@@ -20,6 +20,7 @@ Although this program may compile/ run in Cygwin it runs slowly.
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
@@ -28,98 +29,122 @@ Although this program may compile/ run in Cygwin it runs slowly.
 #define SNAKE_ARRAY_SIZE 310
 
 #ifdef _WIN32
-	//Windows Libraries
-	#include <conio.h>
+    // Windows Libraries
+    #include <conio.h>
+    #include <windows.h>
 
-	//Windows Constants
-	//Controls
-	#define UP_ARROW 72
-	#define LEFT_ARROW 75
-	#define RIGHT_ARROW 77
-	#define DOWN_ARROW 80
+    //Windows Constants
+    //Controls
+    #define UP_ARROW 72
+    #define LEFT_ARROW 75
+    #define RIGHT_ARROW 77
+    #define DOWN_ARROW 80
 
-	#define ENTER_KEY 13
+    #define ENTER_KEY 13
 
-	const char SNAKE_HEAD = (char)177;
-	const char SNAKE_BODY = (char)178;
-	const char WALL = (char)219;
-	const char FOOD = (char)254;
-	const char BLANK = ' ';
+    const char SNAKE_HEAD = (char)177;
+    const char SNAKE_BODY = (char)178;
+    const char WALL = (char)219;
+    const char FOOD = (char)254;
+    const char BLANK = ' ';
+
+    void gotoxy(int x, int y)
+    {
+        COORD coord;
+        coord.X = x;
+        coord.Y = y;
+        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+    }
+
+    void clrscr()
+    {
+        system("cls");
+        return;
+    }
 #else
-	//Linux Libraries
-	#include <stdlib.h>
-	#include <termios.h>
-	#include <unistd.h>
-	#include <fcntl.h>
+    //Linux Libraries
+    #include <stdlib.h>
+    #ifndef _WIN32
+        #include <termios.h>
+        #include <unistd.h>
+        #include <fcntl.h>
+    #endif
 
-	//Linux Constants
+    //Linux Constants
 
-	//Controls (arrow keys for Ubuntu)
-	#define UP_ARROW (char)'A' //Originally I used constants but borland started giving me errors, so I changed to #define - I do realize that is not the best way.
-	#define LEFT_ARROW (char)'D'
-	#define RIGHT_ARROW (char)'C'
-	#define DOWN_ARROW (char)'B'
+    //Controls (arrow keys for Ubuntu)
+    #define UP_ARROW (char)'A' //Originally I used constants but borland started giving me errors, so I changed to #define - I do realize that is not the best way.
+    #define LEFT_ARROW (char)'D'
+    #define RIGHT_ARROW (char)'C'
+    #define DOWN_ARROW (char)'B'
 
-	#define ENTER_KEY 10
+    #define ENTER_KEY 10
 
-	const char SNAKE_HEAD = 'X';
-	const char SNAKE_BODY = '#';
-	const char WALL = '#';
-	const char FOOD = '*';
-	const char BLANK = ' ';
+    const char SNAKE_HEAD = 'X';
+    const char SNAKE_BODY = '#';
+    const char WALL = '#';
+    const char FOOD = '*';
+    const char BLANK = ' ';
 
-	//Linux Functions - These functions emulate some functions from the windows only conio header file
-	//Code: http://ubuntuforums.org/showthread.php?t=549023
-	void gotoxy(int x,int y)
-	{
-		printf("%c[%d;%df",0x1B,y,x);
-	}
+    //Linux Functions - These functions emulate some functions from the windows only conio header file
+    //Code: http://ubuntuforums.org/showthread.php?t=549023
+    void gotoxy(int x,int y)
+    {
+        printf("%c[%d;%df",0x1B,y,x);
+    }
 
-	//http://cboard.cprogramming.com/c-programming/63166-kbhit-linux.html
-	int kbhit(void)
-	{
-	  struct termios oldt, newt;
-	  int ch;
-	  int oldf;
+    void clrscr()
+    {
+        system("clear");
+        return;
+    }
+#endif
 
-	  tcgetattr(STDIN_FILENO, &oldt);
-	  newt = oldt;
-	  newt.c_lflag &= ~(ICANON | ECHO);
-	  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-	  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-	  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+#ifndef _WIN32
+    //http://cboard.cprogramming.com/c-programming/63166-kbhit-linux.html
+    int kbhit(void)
+    {
+      struct termios oldt, newt;
+      int ch;
+      int oldf;
 
-	  ch = getchar();
+      tcgetattr(STDIN_FILENO, &oldt);
+      newt = oldt;
+      newt.c_lflag &= ~(ICANON | ECHO);
+      tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+      oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+      fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
 
-	  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-	  fcntl(STDIN_FILENO, F_SETFL, oldf);
+      ch = getchar();
 
-	  if(ch != EOF)
-	  {
-		ungetc(ch, stdin);
-		return 1;
-	  }
+      tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+      fcntl(STDIN_FILENO, F_SETFL, oldf);
 
-	  return 0;
-	}
+      if(ch != EOF)
+      {
+        ungetc(ch, stdin);
+        return 1;
+      }
 
-	//http://www.experts-exchange.com/Programming/Languages/C/Q_10119844.html - posted by jos
-	char getch()
-	{
-		char c;
-		system("stty raw");
-		c= getchar();
-		system("stty sane");
-		//printf("%c",c);
-		return(c);
-	}
+      return 0;
+    }
 
-	void clrscr()
-	{
-		system("clear");
-		return;
-	}
-	//End linux Functions
+    //http://www.experts-exchange.com/Programming/Languages/C/Q_10119844.html - posted by jos
+    char getch()
+    {
+        char c;
+        system("stty raw");
+        c= getchar();
+        system("stty sane");
+        //printf("%c",c);
+        return(c);
+    }
+
+    void clrscr()
+    {
+        system("clear");
+        return;
+    }
 #endif
 
 //This should be the same on both operating systems
